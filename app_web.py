@@ -22,31 +22,49 @@ GROQ_API_KEY = os.getenv("GROQ_API_KEY")
 
 @st.cache_resource
 def carregar_sistema():
-    # 1. Carrega o banco que o seu indexador.py criou
     embeddings = HuggingFaceEmbeddings(model_name="sentence-transformers/all-MiniLM-L6-v2")
     banco_vetorial = Chroma(persist_directory="banco_dados", embedding_function=embeddings)
-    buscador = banco_vetorial.as_retriever(search_kwargs={"k": 3})
+    
+    # 1. AUMENTAMOS O K PARA 6 (O bot terá o dobro de contexto para ler)
+    buscador = banco_vetorial.as_retriever(search_kwargs={"k": 6})
 
-    # 2. Usa o Groq para velocidade extrema (Llama 3.1 70B ou 8B)
     llm = ChatGroq(model="llama-3.3-70b-versatile", api_key=GROQ_API_KEY)
 
-    template_prompt = """Você é um atendente de SAC educado e direto. 
-    Responda à pergunta do usuário priorizando o contexto. 
-    Se a resposta não estiver no contexto, seja prestativo, mas se não for possivel diga "Desculpe, não tenho essa informação".
+    # 2. PROMPT BLINDADO CONTRA CONFUSÕES
+    template = """Você é um atendente de SAC. 
+    Responda com base estritamente no contexto fornecido. 
+    
+    ATENÇÃO: Cada trecho de contexto possui o nome do [Arquivo de Origem]. 
+    Preste muita atenção ao nome do arquivo para NÃO misturar regras, manuais ou informações de sistemas diferentes. 
+    Se o cliente mencionar um sistema específico, priorize os trechos que vêm do arquivo desse sistema.
 
-    Contexto da Empresa:
+    Contexto:
     {context}
     """
 
     prompt = ChatPromptTemplate.from_messages([
-        ("system", template_prompt),
+        ("system", template),
         MessagesPlaceholder(variable_name="chat_history"),
         ("human", "{question}")
     ])
 
+    # 3. FUNÇÃO QUE INJETA O NOME DO ARQUIVO ANTES DO TEXTO
+    def juntar_textos_com_fonte(docs):
+        textos_formatados = []
+        for d in docs:
+            # Pega o caminho do arquivo e extrai só o nome (ex: manual_sistema_A.pdf)
+            caminho_completo = d.metadata.get('source', 'Desconhecido')
+            nome_arquivo = os.path.basename(caminho_completo)
+            
+            # Cola o nome do arquivo junto com o texto para a IA ler
+            textos_formatados.append(f"[Arquivo de Origem: {nome_arquivo}]\n{d.page_content}")
+            
+        return "\n\n---\n\n".join(textos_formatados)
+
+    # 4. ATUALIZAMOS A CHAIN PARA USAR A NOVA FUNÇÃO
     chain = (
         {
-            "context": itemgetter("question") | buscador | (lambda docs: "\n\n".join(d.page_content for d in docs)),
+            "context": itemgetter("question") | buscador | juntar_textos_com_fonte,
             "question": itemgetter("question"),
             "chat_history": itemgetter("chat_history")
         }
