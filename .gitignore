@@ -1,0 +1,13 @@
+# Ignora o ambiente virtual
+venv/
+
+# Ignora variáveis de ambiente (MUITO IMPORTANTE PARA SUA CHAVE DE API)
+.env
+.streamlit/secrets.toml
+
+# Ignora arquivos temporários do Python e do ChromaDB
+__pycache__/
+chroma_db/
+
+chatbot.py
+base_conhecimento/
