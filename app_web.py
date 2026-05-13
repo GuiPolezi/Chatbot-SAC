@@ -30,8 +30,16 @@ def carregar_sistema():
     # 2. Usa o Groq para velocidade extrema (Llama 3.1 70B ou 8B)
     llm = ChatGroq(model="llama-3.3-70b-versatile", api_key=GROQ_API_KEY)
 
+    template_prompt = """Você é um atendente de SAC educado e direto. 
+    Responda à pergunta do usuário priorizando o contexto. 
+    Se a resposta não estiver no contexto, seja prestativo, mas se não for possivel diga "Desculpe, não tenho essa informação".
+
+    Contexto da Empresa:
+    {context}
+    """
+
     prompt = ChatPromptTemplate.from_messages([
-        ("system", "Você é um atendente de SAC. Responda com base no contexto: {context}"),
+        ("system", template_prompt),
         MessagesPlaceholder(variable_name="chat_history"),
         ("human", "{question}")
     ])
