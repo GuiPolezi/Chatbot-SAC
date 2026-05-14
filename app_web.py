@@ -115,25 +115,24 @@ if prompt_user := st.chat_input("Como posso ajudar?"):
                         st.markdown(f"- `{nome}`")
 
 
-            # ==========================================
+           # ==========================================
             # INTEGRAÇÃO COM O DISCORD
             # ==========================================
             # Se a IA validou o problema e enviou a mensagem do Passo 3:
             if "Já registrei a instabilidade" in resposta:
-                # Procura o link do site na mensagem do cliente
+                # Procura o link do site NA RESPOSTA DA IA (ela tem a memória de tudo)
                 padrao_link = r'(https?://[^\s]+|www\.[^\s]+|[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})'
-                links_encontrados = re.findall(padrao_link, prompt_user)
+                links_encontrados = re.findall(padrao_link, resposta)
                 
                 if links_encontrados:
-                    site_com_erro = links_encontrados[0]
+                    # Limpa possíveis pontuações que grudam no link (como pontos finais ou vírgulas)
+                    site_com_erro = links_encontrados[0].rstrip(".,!?")
                     webhook_url = os.getenv("DISCORD_WEBHOOK_URL")
                     
-                    # Se a URL do Discord existir, envia o alerta!
                     if webhook_url:
                         mensagem_discord = {
-                            "content": f"🚨 **ALERTA DE INSTABILIDADE** 🚨\nO cliente relatou erro no site: **{site_com_erro}**\nEquipe técnica, favor verificar!"
+                            "content": f"🚨 **ALERTA DE INSTABILIDADE** 🚨\nO bot registrou erro no site: **{site_com_erro}**\nEquipe técnica, favor verificar!"
                         }
-                        # O Python faz o envio invisível nos bastidores
                         requests.post(webhook_url, json=mensagem_discord)
             # ==========================================
 
