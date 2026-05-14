@@ -2,7 +2,8 @@ import streamlit as st
 import os
 os.environ["TRANSFORMERS_VERBOSITY"] = "error"
 from dotenv import load_dotenv
-from langchain_chroma import Chroma
+from langchain_qdrant import QdrantVectorStore
+from qdrant_client import QdrantClient
 from langchain_groq import ChatGroq
 from langchain_huggingface import HuggingFaceEmbeddings
 from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
@@ -24,6 +25,7 @@ GROQ_API_KEY = os.getenv("GROQ_API_KEY")
 @st.cache_resource
 def carregar_sistema():
     embeddings = HuggingFaceEmbeddings(model_name="sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2")
+    '''
     # 1. Pegamos o caminho absoluto da pasta do seu projeto
     diretorio_atual = os.path.dirname(os.path.abspath(__file__))
     
@@ -37,6 +39,26 @@ def carregar_sistema():
         search_type="mmr",
         search_kwargs={"k": 12, "fetch_k": 40}
     )
+    '''
+
+    # Conecta no Qdrant usando as variáveis de ambiente
+    url_qdrant = os.getenv("QDRANT_URL")
+    api_key_qdrant = os.getenv("QDRANT_API_KEY")
+    
+    cliente_qdrant = QdrantClient(url=url_qdrant, api_key=api_key_qdrant)
+    
+    # Busca a coleção que criamos no indexador
+    banco_vetorial = QdrantVectorStore(
+        client=cliente_qdrant, 
+        collection_name="sac_conhecimento", 
+        embedding=embeddings
+    )
+    
+    buscador = banco_vetorial.as_retriever(
+        search_type="mmr",
+        search_kwargs={"k": 12, "fetch_k": 40}
+    )
+
 
     llm = ChatGroq(model="llama-3.3-70b-versatile", api_key=GROQ_API_KEY)
 
