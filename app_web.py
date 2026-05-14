@@ -31,7 +31,7 @@ def carregar_sistema():
     
     buscador = banco_vetorial.as_retriever(
         search_type="mmr",
-        search_kwargs={"k": 5, "fetch_k": 20}
+        search_kwargs={"k": 12, "fetch_k": 40}
     )
 
     llm = ChatGroq(model="llama-3.3-70b-versatile", api_key=GROQ_API_KEY)
