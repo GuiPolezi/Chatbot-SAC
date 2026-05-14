@@ -20,12 +20,19 @@ GROQ_API_KEY = os.getenv("GROQ_API_KEY")
 @st.cache_resource
 def carregar_sistema():
     embeddings = HuggingFaceEmbeddings(model_name="sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2")
-    banco_vetorial = Chroma(persist_directory="banco_dados", embedding_function=embeddings)
+    # 1. Pegamos o caminho absoluto da pasta do seu projeto
+    diretorio_atual = os.path.dirname(os.path.abspath(__file__))
+    
+    # 2. Juntamos com o nome da pasta do banco de dados
+    caminho_absoluto_db = os.path.join(diretorio_atual, "banco_dados")
+    
+    # 3. Passamos esse caminho fixo para o Chroma
+    banco_vetorial = Chroma(persist_directory=caminho_absoluto_db, embedding_function=embeddings)
     
     buscador = banco_vetorial.as_retriever(
-    search_type="mmr",
-    search_kwargs={"k": 5, "fetch_k": 20} # Pega os 20 mais relevantes e filtra os 5 mais diversos
-)
+        search_type="mmr",
+        search_kwargs={"k": 5, "fetch_k": 20}
+    )
 
     llm = ChatGroq(model="llama-3.3-70b-versatile", api_key=GROQ_API_KEY)
 
