@@ -50,7 +50,7 @@ def carregar_sistema():
     # Busca a coleção que criamos no indexador
     banco_vetorial = QdrantVectorStore(
         client=cliente_qdrant, 
-        collection_name="sac_conhecimento", 
+        collection_name="Chatbot", 
         embedding=embeddings
     )
     
