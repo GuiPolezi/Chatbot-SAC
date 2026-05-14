@@ -9,5 +9,7 @@ venv/
 __pycache__/
 chroma_db/
 
-chatbot.py
 base_conhecimento/
+
+# Garante que o banco de dados SEMPRE subam para o GitHub
+!banco_dados/
