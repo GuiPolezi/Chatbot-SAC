@@ -34,7 +34,7 @@ def criar_indice():
     pedacos = separador.split_documents(documentos)
 
     # Embeddings e persistência no disco
-    embeddings = HuggingFaceEmbeddings(model_name="sentence-transformers/all-MiniLM-L6-v2")
+    embeddings = HuggingFaceEmbeddings(model_name="sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2")
     
     print(f"🧠 Gerando embeddings para {len(pedacos)} pedaços... Aguarde.")
     Chroma.from_documents(

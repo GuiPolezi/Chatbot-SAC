@@ -19,7 +19,7 @@ GROQ_API_KEY = os.getenv("GROQ_API_KEY")
 
 @st.cache_resource
 def carregar_sistema():
-    embeddings = HuggingFaceEmbeddings(model_name="sentence-transformers/all-MiniLM-L6-v2")
+    embeddings = HuggingFaceEmbeddings(model_name="sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2")
     banco_vetorial = Chroma(persist_directory="banco_dados", embedding_function=embeddings)
     
     # K=6 para dar mais visão à IA
