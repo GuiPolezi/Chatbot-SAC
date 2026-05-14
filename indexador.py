@@ -1,5 +1,5 @@
 import os
-from langchain_community.document_loaders import TextLoader, PyPDFLoader, Docx2txtLoader
+from langchain_community.document_loaders import TextLoader
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 from langchain_chroma import Chroma
 from langchain_community.embeddings import HuggingFaceEmbeddings
@@ -17,10 +17,6 @@ def criar_indice():
         try:
             if arquivo.endswith(".txt"):
                 documentos.extend(TextLoader(caminho, encoding="utf-8").load())
-            elif arquivo.endswith(".pdf"):
-                documentos.extend(PyPDFLoader(caminho).load())
-            elif arquivo.endswith(".docx"):
-                documentos.extend(Docx2txtLoader(caminho).load())
             print(f"✅ Lido: {arquivo}")
         except Exception as e:
             print(f"❌ Erro em {arquivo}: {e}")
