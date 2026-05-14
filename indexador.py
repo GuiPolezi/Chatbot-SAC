@@ -30,7 +30,11 @@ def criar_indice():
         return
 
     # Quebra em pedaços
-    separador = RecursiveCharacterTextSplitter(chunk_size=600, chunk_overlap=100)
+    separador = RecursiveCharacterTextSplitter(
+        separators=["\n\n", "\n", " ", ""], # Força a quebrar primeiro por parágrafos
+        chunk_size=1200,                    # Dobramos o tamanho do contexto
+        chunk_overlap=200                   # Aumentamos a sobreposição para não cortar ideias no meio
+    )
     pedacos = separador.split_documents(documentos)
 
     # Embeddings e persistência no disco

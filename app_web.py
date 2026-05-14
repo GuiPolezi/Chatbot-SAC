@@ -22,14 +22,19 @@ def carregar_sistema():
     embeddings = HuggingFaceEmbeddings(model_name="sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2")
     banco_vetorial = Chroma(persist_directory="banco_dados", embedding_function=embeddings)
     
-    # K=6 para dar mais visão à IA
-    buscador = banco_vetorial.as_retriever(search_kwargs={"k": 6})
+    buscador = banco_vetorial.as_retriever(
+    search_type="mmr",
+    search_kwargs={"k": 5, "fetch_k": 20} # Pega os 20 mais relevantes e filtra os 5 mais diversos
+)
 
     llm = ChatGroq(model="llama-3.3-70b-versatile", api_key=GROQ_API_KEY)
 
-    template = """Você é um atendente de SAC. Responda com base estritamente no contexto fornecido. 
-    ATENÇÃO: Cada trecho possui o nome do [Arquivo de Origem]. 
-    Preste atenção para não misturar informações de sistemas diferentes.
+    template = """Você é um atendente de SAC focado em ajudar o cliente com precisão. 
+
+    REGRAS:
+    1. Responda baseando-se ESTRITAMENTE no contexto fornecido abaixo.
+    2. Cada trecho de informação possui o nome do [Arquivo de Origem]. Caso haja informações conflitantes, priorize responder o que faz mais sentido para a pergunta, ou explique que existem cenários diferentes dependendo do produto/sistema.
+    3. Se a resposta para a pergunta não estiver no contexto, NÃO INVENTE. Diga: "Desculpe, não tenho essa informação exata na minha base de conhecimento no momento."
 
     Contexto:
     {context}
