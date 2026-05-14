@@ -93,7 +93,7 @@ for msg in st.session_state.chat_history:
 if prompt_user := st.chat_input("Como posso ajudar?"):
     st.chat_message("user").write(prompt_user)
     
-    with st.chat_message("assistant"):
+    with st.chat_message("assistant", avatar="images/sino-logo.png"):
         with st.spinner("Consultando base de dados..."):
             
             # 1. BUSCA: Achamos os documentos ANTES de chamar a IA
