@@ -5,6 +5,9 @@ from langchain_community.embeddings import HuggingFaceEmbeddings
 from langchain_qdrant import QdrantVectorStore
 from qdrant_client import QdrantClient
 from qdrant_client.http.models import Distance, VectorParams
+from dotenv import load_dotenv
+
+load_dotenv()
 
 # Configurações
 PASTA_CONHECIMENTO = "base_conhecimento"
@@ -43,6 +46,9 @@ def criar_indice():
     # Conecta no Qdrant Cloud
     url_qdrant = os.getenv("QDRANT_URL")
     api_key_qdrant = os.getenv("QDRANT_API_KEY")
+
+    # ADICIONE ESTA LINHA PARA TESTAR:
+    print(f"URL Lida do .env: {url_qdrant}")
 
     print("☁️ Conectando ao Qdrant Cloud...")
     cliente_qdrant = QdrantClient(url=url_qdrant, api_key=api_key_qdrant)
