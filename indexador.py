@@ -1,15 +1,19 @@
 import os
 from langchain_community.document_loaders import TextLoader
 from langchain_text_splitters import RecursiveCharacterTextSplitter
-from langchain_chroma import Chroma
 from langchain_community.embeddings import HuggingFaceEmbeddings
+from langchain_qdrant import QdrantVectorStore
+from qdrant_client import QdrantClient
+from qdrant_client.http.models import Distance, VectorParams
 
 # Configurações
 PASTA_CONHECIMENTO = "base_conhecimento"
-PASTA_DB = "banco_dados"
+# PASTA_DB = "banco_dados"
+NOME_COLECAO = "Chatbot"
+
 
 def criar_indice():
-    print("🚀 Iniciando indexação de documentos...")
+    print("🚀 Iniciando indexação de documentos para a nuvem...")
     
     documentos = []
     for arquivo in os.listdir(PASTA_CONHECIMENTO):
@@ -36,6 +40,37 @@ def criar_indice():
     # Embeddings e persistência no disco
     embeddings = HuggingFaceEmbeddings(model_name="sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2")
     
+    # Conecta no Qdrant Cloud
+    url_qdrant = os.getenv("QDRANT_URL")
+    api_key_qdrant = os.getenv("QDRANT_API_KEY")
+
+    print("☁️ Conectando ao Qdrant Cloud...")
+    cliente_qdrant = QdrantClient(url=url_qdrant, api_key=api_key_qdrant)
+
+    # Verifica se a coleção (tabela) já existe. Se existir, deleta para atualizar com os novos dados.
+    if cliente_qdrant.collection_exists(collection_name=NOME_COLECAO):
+        print(f"🗑️ Deletando base antiga '{NOME_COLECAO}' para recriar...")
+        cliente_qdrant.delete_collection(collection_name=NOME_COLECAO)
+
+
+    # Cria a coleção nova, avisando o tamanho dos vetores do nosso modelo
+    print(f"🏗️ Criando coleção '{NOME_COLECAO}'...")
+    cliente_qdrant.create_collection(
+        collection_name=NOME_COLECAO,
+        vectors_config=VectorParams(size=384, distance=Distance.COSINE),
+    )
+
+    print(f"🧠 Enviando {len(pedacos)} vetores para a nuvem... Aguarde.")
+    QdrantVectorStore.from_documents(
+        pedacos,
+        embeddings,
+        url=url_qdrant,
+        api_key=api_key_qdrant,
+        collection_name=NOME_COLECAO,
+    )
+    print("✨ Sucesso! Banco de dados enviado e atualizado na nuvem!")
+
+'''
     print(f"🧠 Gerando embeddings para {len(pedacos)} pedaços... Aguarde.")
     Chroma.from_documents(
         documents=pedacos, 
@@ -43,6 +78,7 @@ def criar_indice():
         persist_directory=PASTA_DB
     )
     print(f"✨ Sucesso! Banco de dados salvo em '{PASTA_DB}'")
+'''
 
 if __name__ == "__main__":
     criar_indice()
