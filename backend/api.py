@@ -1,6 +1,7 @@
 import os
 import re
 import requests
+from fastapi.middleware.cors import CORSMiddleware
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
 from typing import List
@@ -38,6 +39,14 @@ class ChatResponse(BaseModel):
 # INICIALIZAÇÃO DO APP E DA IA
 # ==========================================
 app = FastAPI(title="API SAC Inteligente (Alpha)", description="Cérebro do chatbot RAG")
+
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"], # Em produção, substitua pelo domínio do seu site
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 # Variáveis globais para armazenar os componentes carregados
 buscador = None
