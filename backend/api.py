@@ -1,0 +1,146 @@
+import os
+import re
+import requests
+from fastapi import FastAPI, HTTPException
+from pydantic import BaseModel
+from typing import List
+from dotenv import load_dotenv
+
+os.environ["TRANSFORMERS_VERBOSITY"] = "error"
+
+from langchain_qdrant import QdrantVectorStore
+from qdrant_client import QdrantClient
+from langchain_groq import ChatGroq
+from langchain_huggingface import HuggingFaceEmbeddings
+from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
+from langchain_core.output_parsers import StrOutputParser
+from langchain_core.messages import HumanMessage, AIMessage
+
+# Carrega as variáveis de ambiente
+load_dotenv()
+
+# ==========================================
+# MODELOS DE DADOS (PYDANTIC)
+# ==========================================
+class Mensagem(BaseModel):
+    role: str
+    content: str
+
+class ChatRequest(BaseModel):
+    pergunta: str
+    historico: List[Mensagem] = []
+
+class ChatResponse(BaseModel):
+    resposta: str
+    fontes: List[str]
+
+# ==========================================
+# INICIALIZAÇÃO DO APP E DA IA
+# ==========================================
+app = FastAPI(title="API SAC Inteligente (Alpha)", description="Cérebro do chatbot RAG")
+
+# Variáveis globais para armazenar os componentes carregados
+buscador = None
+fluxo_rag = None
+
+def carregar_sistema():
+    global buscador, fluxo_rag
+    embeddings = HuggingFaceEmbeddings(model_name="sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2")
+
+    cliente_qdrant = QdrantClient(
+        url=os.getenv("QDRANT_URL"), 
+        api_key=os.getenv("QDRANT_API_KEY")
+    )
+    
+    banco_vetorial = QdrantVectorStore(
+        client=cliente_qdrant, 
+        collection_name="Chatbot", 
+        embedding=embeddings
+    )
+    
+    buscador = banco_vetorial.as_retriever(search_type="mmr", search_kwargs={"k": 12, "fetch_k": 40})
+    llm = ChatGroq(model="llama-3.3-70b-versatile", api_key=os.getenv("GROQ_API_KEY"))
+
+    template = """Você é um atendente de SAC focado em ajudar o cliente com precisão. 
+
+    REGRAS:
+    1. Responda baseando-se ESTRITAMENTE no contexto fornecido abaixo.
+    2. Cada trecho de informação possui o nome do [Arquivo de Origem]. Caso haja informações conflitantes, priorize responder o que faz mais sentido para a pergunta, ou explique que existem cenários diferentes dependendo do produto/sistema.
+    3. Se a resposta para a pergunta não estiver no contexto, NÃO INVENTE. Diga: "Desculpe, não tenho essa informação exata na minha base de conhecimento no momento."
+
+    Contexto:
+    {context}
+    """
+
+    prompt = ChatPromptTemplate.from_messages([
+        ("system", template),
+        MessagesPlaceholder(variable_name="chat_history"),
+        ("human", "{question}")
+    ])
+
+    fluxo_rag = prompt | llm | StrOutputParser()
+
+# Inicia o sistema ao ligar a API
+@app.on_event("startup")
+async def startup_event():
+    carregar_sistema()
+
+def juntar_textos_com_fonte(docs):
+    textos_formatados = []
+    for d in docs:
+        nome_arquivo = os.path.basename(d.metadata.get('source', 'Desconhecido'))
+        textos_formatados.append(f"[Arquivo de Origem: {nome_arquivo}]\n{d.page_content}")
+    return "\n\n---\n\n".join(textos_formatados)
+
+# ==========================================
+# ROTA PRINCIPAL DA API
+# ==========================================
+@app.post("/chat", response_model=ChatResponse)
+async def chat_endpoint(request: ChatRequest):
+    try:
+        # 0. Converte o histórico do JSON para o formato do LangChain
+        chat_history_langchain = []
+        for msg in request.historico:
+            if msg.role == "user":
+                chat_history_langchain.append(HumanMessage(content=msg.content))
+            else:
+                chat_history_langchain.append(AIMessage(content=msg.content))
+
+        # 1. BUSCA
+        documentos_encontrados = buscador.invoke(request.pergunta)
+        
+        # 2. FORMATAÇÃO
+        contexto_formatado = juntar_textos_com_fonte(documentos_encontrados)
+        
+        # 3. IA
+        resposta = fluxo_rag.invoke({
+            "context": contexto_formatado,
+            "question": request.pergunta,
+            "chat_history": chat_history_langchain
+        })
+        
+        # 4. FONTES
+        nomes_arquivos = list(set([os.path.basename(doc.metadata.get('source', 'Desconhecido')) for doc in documentos_encontrados]))
+
+        # ==========================================
+        # INTEGRAÇÃO COM O DISCORD (Fica no backend agora!)
+        # ==========================================
+        if "Já registrei a instabilidade" in resposta:
+            padrao_link = r'(https?://[^\s]+|www\.[^\s]+|[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})'
+            links_encontrados = re.findall(padrao_link, resposta)
+            
+            if links_encontrados:
+                site_com_erro = links_encontrados[0].rstrip(".,!?")
+                webhook_url = os.getenv("DISCORD_WEBHOOK_URL")
+                
+                if webhook_url:
+                    mensagem_discord = {
+                        "content": f"🚨 **ALERTA DE INSTABILIDADE** 🚨\nO bot registrou erro no site: **{site_com_erro}**\nEquipe técnica, favor verificar!"
+                    }
+                    requests.post(webhook_url, json=mensagem_discord)
+        
+        # 5. RETORNO DA API
+        return ChatResponse(resposta=resposta, fontes=nomes_arquivos)
+
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
