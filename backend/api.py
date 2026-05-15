@@ -78,6 +78,7 @@ def carregar_sistema():
     1. Responda baseando-se ESTRITAMENTE no contexto fornecido abaixo.
     2. Cada trecho de informação possui o nome do [Arquivo de Origem]. Caso haja informações conflitantes, priorize responder o que faz mais sentido para a pergunta.
     3. Se a resposta para a pergunta não estiver no contexto, NÃO INVENTE. Diga: "Desculpe, não tenho essa informação exata na minha base de conhecimento no momento."
+    4. EXCEÇÃO DE SAUDAÇÃO: Se a mensagem do usuário for apenas uma saudação (oi, olá, bom dia, boa tarde) ou um agradecimento, ignore o contexto e apenas responda de forma natural, educada e prestativa.
 
     Contexto:
     {context}
