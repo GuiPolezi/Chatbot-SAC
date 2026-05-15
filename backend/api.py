@@ -90,9 +90,9 @@ def carregar_sistema():
     fluxo_rag = prompt | llm | StrOutputParser()
 
 # Inicia o sistema ao ligar a API
-@app.on_event("startup")
-async def startup_event():
-    carregar_sistema()
+# @app.on_event("startup")
+#async def startup_event():
+#    carregar_sistema()
 
 def juntar_textos_com_fonte(docs):
     textos_formatados = []
@@ -106,6 +106,15 @@ def juntar_textos_com_fonte(docs):
 # ==========================================
 @app.post("/chat", response_model=ChatResponse)
 async def chat_endpoint(request: ChatRequest):
+    global buscador, fluxo_rag
+    
+    # 0. Verifica se o sistema já foi carregado. Se não, carrega agora!
+    if buscador is None or fluxo_rag is None:
+        try:
+            print("Carregando o sistema pela primeira vez...")
+            carregar_sistema()
+        except Exception as e:
+            raise HTTPException(status_code=500, detail=f"Erro ao inicializar IA: {str(e)}")
     try:
         # 0. Converte o histórico do JSON para o formato do LangChain
         chat_history_langchain = []
